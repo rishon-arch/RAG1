@@ -1,0 +1,9 @@
+streamlit>=1.30.0
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-groq>=0.1.0
+fastembed>=0.2.0
+onnxruntime-directml>=1.18.0
+chromadb>=0.4.0
+pypdf>=4.0.0
+python-dotenv>=1.0.0

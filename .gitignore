@@ -1,0 +1,29 @@
+# Environment & Secrets
+.env
+.env.txt
+.env.local
+.env.*.local
+!.env.example
+
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Chroma Vector Stores
+chroma_local_db/
+chroma_gemini_db/
+
+# Large Binary Files (>100MB exceeds GitHub limit)
+*.pdf
+
+# OS Files
+.DS_Store
+Thumbs.db
