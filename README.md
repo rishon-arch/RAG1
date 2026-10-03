@@ -1,6 +1,6 @@
-# 📚 Local RAG Course Assistant
+# 📚 Local RAG Multi-Document Assistant
 
-An offline-first, GPU-accelerated **Retrieval-Augmented Generation (RAG)** assistant designed to index and query large academic documents (1,000+ pages) with page-level citations.
+An offline-first, GPU-accelerated **Retrieval-Augmented Generation (RAG)** assistant designed to index and query large academic documents, lecture slides, papers, notes, and datasets across multiple formats with granular citations.
 
 Built with **LangChain**, **FastEmbed** (`EmbeddingGemma 300M` via **AMD GPU DirectML**), **ChromaDB**, and **Groq** (`Qwen 3.8 27B`).
 
@@ -10,14 +10,32 @@ Built with **LangChain**, **FastEmbed** (`EmbeddingGemma 300M` via **AMD GPU Dir
 
 - **⚡ Hardware-Accelerated Offline Embeddings**: Uses Google's `EmbeddingGemma-300M` model via **FastEmbed** and **DirectML**, running locally on AMD Radeon GPU (and other DirectX 12 hardware) with **zero API rate limits** and **zero 429 quota errors**.
 - **⚡ Ultra-Fast Generation**: Powered by **Groq LPU** inference running `qwen/qwen3.8-27b` for sub-second, grounded responses.
+- **📂 Multi-Format Document Support**:
+  - 📄 **PDF** (`.pdf`) - Streaming page-by-page extraction with page citations.
+  - 📝 **Word Documents** (`.docx`) - Full text extraction with section citations.
+  - 📊 **PowerPoint Slides** (`.pptx`) - Slide-by-slide extraction with slide number citations.
+  - 📋 **Markdown & Text** (`.md`, `.txt`) - UTF-8 / multi-encoding tolerant parsing.
+  - 📈 **Spreadsheets / CSV** (`.csv`) - Tabular row-level citations.
+- **🌐 Multi-Document Federated Search (Option A)**:
+  - Query **multiple documents simultaneously** or toggle **"Query ALL Indexed Documents"** with one click.
+  - Queries are executed using an optimized single-pass GPU embedding across all selected Chroma collections, ranking and merging the most semantically relevant chunks into unified context.
+  - Granular multi-document citations: Each answer cites the exact document title, page/slide/row, and semantic distance.
+- **🎯 Dynamic Document Selection & Drag-and-Drop Upload**:
+  - Multi-select documents to query directly in the **Streamlit sidebar**.
+  - Drag and drop new files via the built-in file uploader.
+  - Each document maintains its own isolated ChromaDB collection for clean updates and modular re-indexing.
 - **🧩 Sub-Query Auto-Decomposition**: Automatically detects prompts with multiple questions/MCQs, running independent, focused vector searches ($k=3$) for each question to eliminate vector dilution and prevent token quota blowups.
 - **💬 Gemini/ChatGPT-Style Web Interface**: Built with **Streamlit**, featuring:
   - `➕ New Chat` button.
   - Multi-session chat history with automatic topic naming.
   - One-click deletion of conversations.
   - Native LaTeX math rendering (`$...$` and `$$...$$`).
-  - Expandable source citation drawers displaying exact page numbers and retrieved context chunks.
-- **🖥️ Dual Mode**: Run as a modern web application (`streamlit_app.py`) or a clean terminal CLI (`app.py`).
+  - Expandable source citation drawers displaying exact document names, page/slide/row numbers, semantic scores, and retrieved context chunks.
+- **👁️ Multimodal Vision Support (Qwen 3.8 27B)**:
+  - Drag and drop or attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) directly in the chat bar.
+  - Ask questions about handwritten notes, exam diagrams, hardware charts, and lecture slides.
+  - Automatic OCR & visual query extraction: If an image is dropped without prompt text, Qwen automatically inspects the visual content, formulates an optimal retrieval query, fetches relevant document context from ChromaDB, and delivers an in-depth cited answer.
+- **🖥️ Dual Mode**: Run as a modern web application (`streamlit_app.py`) or an interactive terminal CLI (`app.py`).
 
 ---
 
@@ -25,11 +43,12 @@ Built with **LangChain**, **FastEmbed** (`EmbeddingGemma 300M` via **AMD GPU Dir
 
 ```mermaid
 flowchart TD
-    Doc["1,000+ Page PDF (e.g., nptel.pdf)"] --> Loader["PyPDFLoader (Lazy Streaming)"]
+    DocSelect["Select / Upload Document (PDF, DOCX, PPTX, TXT, MD, CSV)"] --> Dispatcher["doc_loader.py Dispatcher"]
+    Dispatcher --> Loader["Format-Specific Loader (PyPDF / Docx / PPTX / Text / CSV)"]
     Loader --> Splitter["RecursiveCharacterTextSplitter (1200 chars, 200 overlap)"]
     Splitter --> FastEmbed["FastEmbed (google/embeddinggemma-300m)"]
     FastEmbed --> DirectML["DirectML (AMD Radeon GPU Acceleration)"]
-    DirectML --> ChromaDB[("Local ChromaDB (./chroma_local_db)")]
+    DirectML --> ChromaDB[("ChromaDB Collections (./chroma_local_db)")]
     
     UserQuery["User Prompt (Single or Multi-MCQ)"] --> Decomposer{"Multi-Question Detected?"}
     Decomposer -- Yes --> Split["Split into Sub-Queries (Q1, Q2... Qn)"]
@@ -41,7 +60,7 @@ flowchart TD
     
     RetMulti --> LLM["Groq LPU (Qwen 3.8 27B)"]
     RetSingle --> LLM
-    LLM --> Answer["Grounded Answer with Page Citations"]
+    LLM --> Answer["Grounded Answer with Page / Slide / Row Citations"]
 ```
 
 ---
@@ -78,11 +97,9 @@ Create a `.env` file in the root folder:
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
-*(Optional: `GOOGLE_API_KEY` is only needed if you choose to use Google cloud embeddings instead of local FastEmbed).*
+### 4. Add Documents
 
-### 4. Add Your Course PDF
-
-Place your PDF document in the project root directory (default target: `nptel.pdf`).
+Place any documents (`.pdf`, `.docx`, `.pptx`, `.txt`, `.md`, `.csv`) in the project directory or upload them directly via the Streamlit interface into `./uploaded_docs`.
 
 ---
 
@@ -93,13 +110,18 @@ Place your PDF document in the project root directory (default target: `nptel.pd
 ```powershell
 streamlit run streamlit_app.py
 ```
-- On the first run, click **"🚀 Index Document Now"** to extract and embed the PDF locally on your GPU.
-- On all subsequent runs, the database loads instantly from disk in under a second!
+- In the sidebar under **"📁 Document Selection"**, choose any existing document or upload a new one.
+- If the document is not yet indexed, click **"🚀 Index Document Now"** to extract and embed it locally on your GPU.
+- If already indexed, the database loads instantly in under a second!
 
 ### Option B: Run in the Terminal (CLI)
 
 ```powershell
+# Interactive menu:
 python app.py
+
+# Or directly specify target document:
+python app.py "Module 1&2 book material.pdf"
 ```
 
 ---

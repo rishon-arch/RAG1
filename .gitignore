@@ -23,6 +23,7 @@ chroma_gemini_db/
 
 # Large Binary Files (>100MB exceeds GitHub limit)
 *.pdf
+uploaded_docs/
 
 # OS Files
 .DS_Store
